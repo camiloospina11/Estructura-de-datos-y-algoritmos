@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import random
 
-# Función para generar nombres ficticios
+# Generar nombres de lugares ficticios
 def generar_lugares():
     return [
         "Bosque Sombrío", "Castillo del Eco", "Aldea del Viento", "Cueva del Trueno",
@@ -10,7 +10,7 @@ def generar_lugares():
         "Templo de Fuego", "Isla Perdida"
     ]
 
-# Función para crear un grafo de mundo ficticio con biomas
+# Crear el grafo con nodos, biomas y conexiones
 def generar_mapa():
     lugares = generar_lugares()
     biomas = ["bosque", "fuego", "hielo", "agua", "montaña", "desierto"]
@@ -18,7 +18,8 @@ def generar_mapa():
 
     for lugar in lugares:
         bioma = random.choice(biomas)
-        G.add_node(lugar, bioma=bioma)
+        G.add_node(lugar)
+        G.nodes[lugar]['bioma'] = bioma  # Asignar bioma correctamente
 
     conectados = [lugares[0]]
     no_conectados = lugares[1:]
@@ -39,43 +40,47 @@ def generar_mapa():
 
     return G
 
-# Función para mostrar el mapa gráficamente con fondo tipo papiro y colores por bioma
+# Mostrar el mapa con colores de bioma
 def mostrar_mapa(G):
     pos = nx.spring_layout(G, seed=42)
     fig, ax = plt.subplots(figsize=(12, 8))
-
-    # Fondo estilo papiro
     fig.patch.set_facecolor('#f3e5ab')
     ax.set_facecolor('#f3e5ab')
 
-    # Colores por bioma
     colores_bioma = {
-        "bosque": "#228B22",
-        "fuego": "#B22222",
-        "hielo": "#ADD8E6",
-        "agua": "#1E90FF",
-        "montaña": "#A9A9A9",
-        "desierto": "#EDC9AF"
+        "bosque": "#228B22",    # verde bosque
+        "fuego": "#B22222",     # rojo fuego
+        "hielo": "#ADD8E6",     # azul hielo
+        "agua": "#1E90FF",      # azul agua
+        "montaña": "#A9A9A9",   # gris
+        "desierto": "#EDC9AF"   # arena
     }
 
-    nodos = G.nodes()
-    colores_nodos = [colores_bioma[G.nodes[n]["bioma"]] for n in nodos]
+    nodos = list(G.nodes())
+    colores_nodos = []
+
+    # Confirmamos y coloreamos según el bioma
+    for n in nodos:
+        bioma = G.nodes[n].get("bioma", "bosque")
+        color = colores_bioma.get(bioma, "#fffffH")
+        colores_nodos.append(color)
+        print(f"{n} → {bioma} → {color}")  # Verificación en consola
 
     nx.draw(G, pos, with_labels=True, node_size=2000, node_color=colores_nodos,
             font_size=10, font_weight='bold', ax=ax)
 
-    labels = nx.get_edge_attributes(G, 'weight')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_color='brown', ax=ax)
+    etiquetas = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=etiquetas, font_color='brown', ax=ax)
 
     plt.title("🌍 Mapa de Mundo Ficticio con Biomas 🌄", fontsize=16, fontweight='bold')
     plt.axis('off')
     plt.show()
 
-# Menú principal
+# Menú interactivo
 def menu():
     while True:
-        print("\n=== Generador de Mapas Ficticios con Grafos ===")
-        print("1. Generar nuevo mapa con biomas")
+        print("\n=== Generador de Mapas Ficticios con Biomas ===")
+        print("1. Generar nuevo mapa")
         print("2. Salir")
         opcion = input("Selecciona una opción: ")
 
@@ -83,11 +88,10 @@ def menu():
             G = generar_mapa()
             mostrar_mapa(G)
         elif opcion == "2":
-            print("¡Hasta pronto, aventurero!")
+            print("¡Hasta la próxima exploración!")
             break
         else:
-            print("Opción inválida. Intenta nuevamente.")
+            print("Opción inválida. Intenta de nuevo.")
 
-# Ejecutar menú
 if __name__ == "__main__":
     menu()
