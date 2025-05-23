@@ -2,7 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import random
 
-# Generar nombres de lugares ficticios
 def generar_lugares():
     return [
         "Bosque Sombrío", "Castillo del Eco", "Aldea del Viento", "Cueva del Trueno",
@@ -10,7 +9,6 @@ def generar_lugares():
         "Templo de Fuego", "Isla Perdida"
     ]
 
-# Crear el grafo con nodos, biomas y conexiones
 def generar_mapa():
     lugares = generar_lugares()
     biomas = ["bosque", "fuego", "hielo", "agua", "montaña", "desierto"]
@@ -19,7 +17,7 @@ def generar_mapa():
     for lugar in lugares:
         bioma = random.choice(biomas)
         G.add_node(lugar)
-        G.nodes[lugar]['bioma'] = bioma  # Asignar bioma correctamente
+        G.nodes[lugar]['bioma'] = bioma
 
     conectados = [lugares[0]]
     no_conectados = lugares[1:]
@@ -40,7 +38,6 @@ def generar_mapa():
 
     return G
 
-# Mostrar el mapa normal con colores por bioma
 def mostrar_mapa(G):
     pos = nx.spring_layout(G, seed=42)
     fig, ax = plt.subplots(figsize=(12, 8))
@@ -65,7 +62,6 @@ def mostrar_mapa(G):
     plt.axis('off')
     plt.show()
 
-# Mostrar el mapa con la ruta más corta resaltada
 def mostrar_mapa_con_ruta(G, camino):
     pos = nx.spring_layout(G, seed=42)
     fig, ax = plt.subplots(figsize=(12, 8))
@@ -93,7 +89,33 @@ def mostrar_mapa_con_ruta(G, camino):
     plt.axis('off')
     plt.show()
 
-# Encontrar ruta más corta con Dijkstra
+def narrar_aventura(G, camino):
+    print("\n📖 Leyenda del viajero entre tierras antiguas:\n")
+
+    inicio = camino[0]
+    destino = camino[-1]
+    print(f"Desde la ancestral {inicio}, un viajero parte en busca del mítico {destino}.\n")
+
+    for i in range(len(camino)-1):
+        actual = camino[i]
+        siguiente = camino[i+1]
+        peso = G[actual][siguiente]['weight']
+        bioma = G.nodes[siguiente].get("bioma", "tierra desconocida")
+
+        descripcion = {
+            "bosque": "un denso bosque encantado 🌲",
+            "fuego": "una tierra ardiente plagada de lava y cenizas 🔥",
+            "hielo": "una tundra helada donde el tiempo parece congelado ❄️",
+            "agua": "pantanos y lagunas de aguas misteriosas 💧",
+            "montaña": "colinas escarpadas y niebla espesa ⛰️",
+            "desierto": "una llanura seca y agrietada por el sol abrasador 🏜️"
+        }.get(bioma, "un paraje inexplorado")
+
+        print(f"Tras cruzar {peso} leguas, el viajero llega a {siguiente}, {descripcion}.")
+
+    print(f"\nFinalmente, al anochecer, alcanza su destino: {destino}.")
+    print("Allí lo espera un secreto milenario, guardado por siglos...\n✨ Fin de la travesía ✨\n")
+
 def encontrar_mejor_ruta(G):
     print("\n--- Encontrar ruta más corta entre dos lugares ---")
     nodos = list(G.nodes())
@@ -109,10 +131,10 @@ def encontrar_mejor_ruta(G):
         camino = nx.dijkstra_path(G, nodos[origen], nodos[destino], weight='weight')
         print("Ruta más corta:", " → ".join(camino))
         mostrar_mapa_con_ruta(G, camino)
+        narrar_aventura(G, camino)
     except Exception as e:
         print("Error:", e)
 
-# Menú principal
 def menu():
     G = None
     while True:
