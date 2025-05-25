@@ -6,14 +6,14 @@ from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Rectangle, Color, Line
+from kivy.graphics import Rectangle, Color, Line, InstructionGroup
 from kivy.uix.spinner import Spinner
+from kivy.uix.popup import Popup
+from kivy.clock import Clock
 from collections import deque
 
-# Tamaño de la ventana
 Window.size = (900, 600)
 
-# Posiciones fijas (x, y) en porcentaje relativo para Kivy
 POSICIONES = {
     "Bosque Sombrío": (0.05, 0.55),
     "Castillo del Eco": (0.25, 0.65),
@@ -39,6 +39,8 @@ ICONOS_BIOMA = {
 class MapaWidget(FloatLayout):
     def __init__(self, **kwargs):
         self.jugador_posicion = "Bosque Sombrío"
+        self.destino_ruta = None
+        self.animaciones_anteriores = []
         self.CONEXIONES = [
             ("Bosque Sombrío", "Castillo del Eco"),
             ("Castillo del Eco", "Montaña de Cristal"),
@@ -68,6 +70,11 @@ class MapaWidget(FloatLayout):
     def ver_mapa(self, instance):
         self.clear_widgets()
         self.update_bg()
+
+        # Borrar animaciones anteriores
+        for animacion in self.animaciones_anteriores:
+            self.canvas.remove(animacion)
+        self.animaciones_anteriores.clear()
 
         with self.canvas:
             Color(0, 0, 0, 1)
@@ -104,10 +111,15 @@ class MapaWidget(FloatLayout):
             self.add_widget(Label(text=lugar, size_hint=(None, None), size=(120, 20), pos_hint={"x": x, "y": y - 0.05}))
             if lugar == self.jugador_posicion:
                 self.add_widget(Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05}))
+            if lugar == self.destino_ruta:
+                with self.canvas:
+                    Color(1, 1, 0, 1)  # Amarillo
+                    circulo = Line(circle=(x * Window.width + 32, y * Window.height + 32, 40), width=2)
+                    self.animaciones_anteriores.append(circulo)
 
         self.spinner_destino = Spinner(
             text='Destino',
-            values=sorted(POSICIONES.keys()),
+            values=sorted([lugar for lugar in POSICIONES.keys() if lugar != self.jugador_posicion]),
             size_hint=(None, None),
             size=(150, 44),
             pos_hint={'x': 0.82, 'y': 0.05}
@@ -143,9 +155,75 @@ class MapaWidget(FloatLayout):
     def calcular_ruta_minima(self, instance):
         inicio = self.jugador_posicion
         destino = self.spinner_destino.text.strip()
+        self.destino_ruta = destino
+
+        def mostrar_popup_ruta(titulo, mensaje, camino):
+            layout = FloatLayout()
+            with layout.canvas.before:
+                Color(1, 1, 1, 1)
+                self.popup_bg = Rectangle(source='images/mapa_papiro.png', pos=layout.pos, size=(600, 300))
+                layout.bind(pos=lambda *args: setattr(self.popup_bg, 'pos', layout.pos))
+                layout.bind(size=lambda *args: setattr(self.popup_bg, 'size', layout.size))
+
+            label = Label(
+                text=mensaje,
+                size_hint=(0.9, 0.5),
+                pos_hint={"center_x": 0.5, "center_y": 0.6},
+                halign='center',
+                valign='middle',
+                color=(0, 0, 0, 1),
+                font_size=16
+            )
+            label.bind(size=label.setter('text_size'))
+            layout.add_widget(label)
+
+            btn_aceptar = Button(
+                text="Aceptar",
+                size_hint=(None, None),
+                size=(100, 40),
+                pos_hint={"x": 0.3, "y": 0.05}
+            )
+
+            btn_seguir = Button(
+                text="Seguir ruta",
+                size_hint=(None, None),
+                size=(120, 40),
+                pos_hint={"x": 0.55, "y": 0.05}
+            )
+
+            popup = Popup(
+                title=titulo,
+                content=layout,
+                size_hint=(None, None),
+                size=(600, 300),
+                auto_dismiss=False
+            )
+
+            def seguir_ruta(inst):
+                popup.dismiss()
+                camino_iter = iter(camino[1:])
+
+                def mover_paso_a_paso(dt):
+                    try:
+                        siguiente = next(camino_iter)
+                        self.jugador_posicion = siguiente
+                        self.ver_mapa(None)
+                        Clock.schedule_once(mover_paso_a_paso, 0.7)
+                    except StopIteration:
+                        return
+
+                Clock.schedule_once(mover_paso_a_paso, 0.7)
+
+            btn_aceptar.bind(on_press=popup.dismiss)
+            btn_seguir.bind(on_press=seguir_ruta)
+
+            layout.add_widget(btn_aceptar)
+            layout.add_widget(btn_seguir)
+
+            popup.open()
 
         if inicio not in POSICIONES or destino not in POSICIONES or inicio == destino:
-            print("Selecciona un destino válido distinto a la posición actual del jugador.")
+            mostrar_popup_ruta("Destino inválido", "Selecciona un destino distinto a tu posición actual.", [])
             return
 
         visitados = set()
@@ -155,18 +233,22 @@ class MapaWidget(FloatLayout):
             camino = cola.popleft()
             nodo = camino[-1]
             if nodo == destino:
-                print("Ruta más corta:", " → ".join(camino))
+                ruta_texto = " → ".join(camino)
+
                 with self.canvas:
                     Color(1, 0, 0, 1)
                     for i in range(len(camino) - 1):
                         x1, y1 = POSICIONES[camino[i]]
-                        x2, y2 = POSICIONES[camino[i+1]]
+                        x2, y2 = POSICIONES[camino[i + 1]]
                         x1_abs = x1 * Window.width
                         y1_abs = y1 * Window.height
                         x2_abs = x2 * Window.width
                         y2_abs = y2 * Window.height
                         Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=2.5)
+
+                mostrar_popup_ruta("Ruta más corta", f"Ruta más corta:\n{ruta_texto}", camino)
                 return
+
             if nodo not in visitados:
                 visitados.add(nodo)
                 vecinos = [b for a, b in self.CONEXIONES if a == nodo] + [a for a, b in self.CONEXIONES if b == nodo]
@@ -174,7 +256,7 @@ class MapaWidget(FloatLayout):
                     if vecino not in camino:
                         cola.append(camino + [vecino])
 
-        print("No hay ruta disponible.")
+        mostrar_popup_ruta("Sin ruta", "No hay ruta disponible.", [])
 
 class MundoApp(App):
     def build(self):
@@ -182,3 +264,4 @@ class MundoApp(App):
 
 if __name__ == '__main__':
     MundoApp().run()
+
