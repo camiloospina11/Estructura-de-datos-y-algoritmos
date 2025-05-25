@@ -1,162 +1,130 @@
+import sys
+import os
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 import random
 
-def generar_lugares():
-    return [
-        "Bosque Sombrío", "Castillo del Eco", "Aldea del Viento", "Cueva del Trueno",
-        "Montaña de Cristal", "Llanura Dorada", "Río de la Luna", "Ruinas del Olvido",
-        "Templo de Fuego", "Isla Perdida"
-    ]
+# Posiciones fijas en el mapa
+POSICIONES = {
+    "Bosque Sombrío": (0, 3),
+    "Castillo del Eco": (2, 4),
+    "Montaña de Cristal": (2, 5),
+    "Cueva del Trueno": (0, 1.2),
+    "Templo de Fuego": (3, 2),
+    "Llanura Dorada": (4, 1),
+    "Aldea del Viento": (4, 4),
+    "Río de la Luna": (4, 0),
+    "Ruinas del Olvido": (0, -0.5),
+    "Isla Perdida": (6, 5)
+}
 
-def generar_mapa():
-    lugares = generar_lugares()
-    biomas = ["bosque", "fuego", "hielo", "agua", "montaña", "desierto"]
-    G = nx.Graph()
+COLORES_BIOMA = {
+    "bosque": "#228B22",
+    "fuego": "#B22222",
+    "hielo": "#ADD8E6",
+    "agua": "#1E90FF",
+    "montaña": "#A9A9A9",
+    "desierto": "#EDC9AF"
+}
 
-    for lugar in lugares:
-        bioma = random.choice(biomas)
-        G.add_node(lugar)
-        G.nodes[lugar]['bioma'] = bioma
+ICONOS_BIOMA = {
+    "bosque": "images/Arbol.png",
+    "fuego": "images/Fuego.png",
+    "hielo": "images/Hielo.png",
+    "agua": "images/Agua.png",
+    "montaña": "images/Montaña.png",
+    "desierto": "images/Desierto.png"
+}
 
-    conectados = [lugares[0]]
-    no_conectados = lugares[1:]
+CONEXIONES_FIJAS = [
+    ("Bosque Sombrío", "Castillo del Eco"),
+    ("Castillo del Eco", "Montaña de Cristal"),
+    ("Montaña de Cristal", "Isla Perdida"),
+    ("Isla Perdida", "Aldea del Viento"),
+    ("Aldea del Viento", "Llanura Dorada"),
+    ("Llanura Dorada", "Río de la Luna"),
+    ("Río de la Luna", "Templo de Fuego"),
+    ("Templo de Fuego", "Cueva del Trueno"),
+    ("Cueva del Trueno", "Ruinas del Olvido"),
+    ("Ruinas del Olvido", "Bosque Sombrío")
+]
 
-    while no_conectados:
-        a = random.choice(conectados)
-        b = random.choice(no_conectados)
-        peso = random.randint(1, 10)
-        G.add_edge(a, b, weight=peso)
-        conectados.append(b)
-        no_conectados.remove(b)
+class MapaCanvas(FigureCanvas):
+    def __init__(self):
+        self.fig, self.ax = plt.subplots(figsize=(10, 6))
+        super().__init__(self.fig)
 
-    for _ in range(5):
-        a, b = random.sample(lugares, 2)
-        if not G.has_edge(a, b):
-            peso = random.randint(1, 10)
-            G.add_edge(a, b, weight=peso)
+    def dibujar_mapa(self, G):
+        self.ax.clear()
+        self.fig.patch.set_facecolor('#f3e5ab')
+        self.ax.set_facecolor('#f3e5ab')
 
-    return G
+        nx.draw_networkx_edges(G, POSICIONES, ax=self.ax)
 
-def mostrar_mapa(G):
-    pos = nx.spring_layout(G, seed=42)
-    fig, ax = plt.subplots(figsize=(12, 8))
-    fig.patch.set_facecolor('#f3e5ab')
-    ax.set_facecolor('#f3e5ab')
+        etiquetas = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edge_labels(G, POSICIONES, edge_labels=etiquetas, font_color='brown', ax=self.ax)
 
-    colores_bioma = {
-        "bosque": "#228B22", "fuego": "#B22222", "hielo": "#ADD8E6",
-        "agua": "#1E90FF", "montaña": "#A9A9A9", "desierto": "#EDC9AF"
-    }
-
-    nodos = list(G.nodes())
-    colores_nodos = [colores_bioma.get(G.nodes[n].get("bioma", "bosque"), "#ffffff") for n in nodos]
-
-    nx.draw(G, pos, with_labels=True, node_size=2000, node_color=colores_nodos,
-            font_size=10, font_weight='bold', ax=ax)
-
-    etiquetas = nx.get_edge_attributes(G, 'weight')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=etiquetas, font_color='brown', ax=ax)
-
-    plt.title("🌍 Mapa de Mundo Ficticio con Biomas 🌄", fontsize=16, fontweight='bold')
-    plt.axis('off')
-    plt.show()
-
-def mostrar_mapa_con_ruta(G, camino):
-    pos = nx.spring_layout(G, seed=42)
-    fig, ax = plt.subplots(figsize=(12, 8))
-    fig.patch.set_facecolor('#f3e5ab')
-    ax.set_facecolor('#f3e5ab')
-
-    colores_bioma = {
-        "bosque": "#228B22", "fuego": "#B22222", "hielo": "#ADD8E6",
-        "agua": "#1E90FF", "montaña": "#A9A9A9", "desierto": "#EDC9AF"
-    }
-
-    nodos = list(G.nodes())
-    colores_nodos = [colores_bioma.get(G.nodes[n].get("bioma", "bosque"), "#ffffff") for n in nodos]
-
-    nx.draw(G, pos, with_labels=True, node_size=2000, node_color=colores_nodos,
-            font_size=10, font_weight='bold', ax=ax)
-
-    etiquetas = nx.get_edge_attributes(G, 'weight')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=etiquetas, font_color='brown', ax=ax)
-
-    edges = list(zip(camino[:-1], camino[1:]))
-    nx.draw_networkx_edges(G, pos, edgelist=edges, width=4, edge_color='crimson', ax=ax)
-
-    plt.title("🧭 Ruta más corta resaltada", fontsize=16, fontweight='bold')
-    plt.axis('off')
-    plt.show()
-
-def narrar_aventura(G, camino):
-    print("\n📖 Leyenda del viajero entre tierras antiguas:\n")
-
-    inicio = camino[0]
-    destino = camino[-1]
-    print(f"Desde la ancestral {inicio}, un viajero parte en busca del mítico {destino}.\n")
-
-    for i in range(len(camino)-1):
-        actual = camino[i]
-        siguiente = camino[i+1]
-        peso = G[actual][siguiente]['weight']
-        bioma = G.nodes[siguiente].get("bioma", "tierra desconocida")
-
-        descripcion = {
-            "bosque": "un denso bosque encantado 🌲",
-            "fuego": "una tierra ardiente plagada de lava y cenizas 🔥",
-            "hielo": "una tundra helada donde el tiempo parece congelado ❄️",
-            "agua": "pantanos y lagunas de aguas misteriosas 💧",
-            "montaña": "colinas escarpadas y niebla espesa ⛰️",
-            "desierto": "una llanura seca y agrietada por el sol abrasador 🏜️"
-        }.get(bioma, "un paraje inexplorado")
-
-        print(f"Tras cruzar {peso} leguas, el viajero llega a {siguiente}, {descripcion}.")
-
-    print(f"\nFinalmente, al anochecer, alcanza su destino: {destino}.")
-    print("Allí lo espera un secreto milenario, guardado por siglos...\n✨ Fin de la travesía ✨\n")
-
-def encontrar_mejor_ruta(G):
-    print("\n--- Encontrar ruta más corta entre dos lugares ---")
-    nodos = list(G.nodes())
-    for i, n in enumerate(nodos):
-        print(f"{i+1}. {n}")
-    try:
-        origen = int(input("Selecciona el número del nodo de origen: ")) - 1
-        destino = int(input("Selecciona el número del nodo de destino: ")) - 1
-        if origen == destino:
-            print("¡El origen y el destino son iguales!")
-            return
-
-        camino = nx.dijkstra_path(G, nodos[origen], nodos[destino], weight='weight')
-        print("Ruta más corta:", " → ".join(camino))
-        mostrar_mapa_con_ruta(G, camino)
-        narrar_aventura(G, camino)
-    except Exception as e:
-        print("Error:", e)
-
-def menu():
-    G = None
-    while True:
-        print("\n=== Generador de Mapas Ficticios con Grafos ===")
-        print("1. Generar nuevo mapa")
-        print("2. Mostrar mejor ruta (Dijkstra)")
-        print("3. Salir")
-        opcion = input("Selecciona una opción: ")
-
-        if opcion == "1":
-            G = generar_mapa()
-            mostrar_mapa(G)
-        elif opcion == "2":
-            if G is None:
-                print("Primero genera un mapa (opción 1).")
+        for nodo, (x, y) in POSICIONES.items():
+            bioma = G.nodes[nodo].get('bioma', 'bosque').lower()
+            path = ICONOS_BIOMA.get(bioma)
+            print(f"Nodo: {nodo}, Bioma: {bioma}, Ruta: {path}")
+            if path and os.path.exists(path):
+                try:
+                    img = mpimg.imread(path)
+                    im = OffsetImage(img, zoom=0.45)
+                    ab = AnnotationBbox(im, (x, y), frameon=False)
+                    self.ax.add_artist(ab)
+                except Exception as e:
+                    print(f"Error cargando imagen para {nodo}: {e}")
             else:
-                encontrar_mejor_ruta(G)
-        elif opcion == "3":
-            print("¡Hasta la próxima exploración!")
-            break
-        else:
-            print("Opción inválida. Intenta de nuevo.")
+                print(f"⚠️ Imagen no encontrada para bioma '{bioma}': {path}")
 
-if __name__ == "__main__":
-    menu()
+            self.ax.text(x, y - 0.4, nodo, ha='center', fontsize=9, fontweight='bold')
+
+        self.ax.set_title("🌍 Mapa de Mundo Ficticio", fontsize=16, fontweight='bold')
+        self.ax.axis('off')
+        self.draw()
+
+class VentanaPrincipal(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Generador de Mundo Ficticio con Grafos")
+
+        self.canvas = MapaCanvas()
+        self.boton_generar = QPushButton("Ver Mapa")
+        self.boton_generar.clicked.connect(self.ver_mapa)
+
+        self.G = None
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        layout.addWidget(self.boton_generar)
+
+        contenedor = QWidget()
+        contenedor.setLayout(layout)
+        self.setCentralWidget(contenedor)
+
+    def ver_mapa(self):
+        if self.G is None:
+            self.G = nx.Graph()
+            biomas = list(COLORES_BIOMA.keys())
+
+            for lugar in POSICIONES:
+                self.G.add_node(lugar)
+                self.G.nodes[lugar]['bioma'] = random.choice(biomas)
+
+            for a, b in CONEXIONES_FIJAS:
+                if not self.G.has_edge(a, b):
+                    self.G.add_edge(a, b, weight=random.randint(1, 10))
+
+        self.canvas.dibujar_mapa(self.G)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ventana = VentanaPrincipal()
+    ventana.show()
+    sys.exit(app.exec_())
