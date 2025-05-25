@@ -59,6 +59,29 @@ class MapaCanvas(FigureCanvas):
         super().__init__(self.fig)
 
     def dibujar_mapa(self, G):
+        # PRUEBA: mostrar una sola imagen fija al centro del canvas
+        self.ax.clear()
+        self.fig.patch.set_facecolor('#f3e5ab')
+        self.ax.set_facecolor('#f3e5ab')
+
+        try:
+            path = "images/Arbol.png"
+            if os.path.exists(path):
+                img = mpimg.imread(path)
+                im = OffsetImage(img, zoom=0.5)
+                ab = AnnotationBbox(im, (2.5, 2.5), frameon=False)
+                self.ax.add_artist(ab)
+                print("✅ Imagen cargada y añadida al centro correctamente")
+            else:
+                print(f"❌ No se encontró la imagen de prueba en: {path}")
+        except Exception as e:
+            print(f"⚠️ Error al mostrar la imagen de prueba: {e}")
+
+        self.ax.set_title("🧪 Prueba de imagen en PyQt5", fontsize=16, fontweight='bold')
+        self.ax.axis('off')
+        self.draw()
+
+        return  # salir temprano para evitar dibujar el grafo mientras probamos
         self.ax.clear()
         self.fig.patch.set_facecolor('#f3e5ab')
         self.ax.set_facecolor('#f3e5ab')
