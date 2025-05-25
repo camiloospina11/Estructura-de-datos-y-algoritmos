@@ -53,9 +53,33 @@ class MapaWidget(FloatLayout):
         self.bg.size = self.size
 
     def ver_mapa(self, instance):
+        CONEXIONES = [
+            ("Bosque Sombrío", "Castillo del Eco"),
+            ("Castillo del Eco", "Montaña de Cristal"),
+            ("Montaña de Cristal", "Isla Perdida"),
+            ("Isla Perdida", "Aldea del Viento"),
+            ("Aldea del Viento", "Llanura Dorada"),
+            ("Llanura Dorada", "Río de la Luna"),
+            ("Río de la Luna", "Templo de Fuego"),
+            ("Templo de Fuego", "Cueva del Trueno"),
+            ("Cueva del Trueno", "Ruinas del Olvido"),
+            ("Ruinas del Olvido", "Bosque Sombrío")
+        ]
         jugador_posicion = "Bosque Sombrío"  # Nodo inicial del jugador
         self.clear_widgets()
         self.update_bg()
+
+        with self.canvas:
+            Color(0, 0, 0, 1)
+            for origen, destino in CONEXIONES:
+                x1, y1 = POSICIONES[origen]
+                x2, y2 = POSICIONES[destino]
+                x1_abs = x1 * Window.width
+                y1_abs = y1 * Window.height
+                x2_abs = x2 * Window.width
+                y2_abs = y2 * Window.height
+                from kivy.graphics import Line
+                Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=1.5)
 
         # Volver a colocar el botón
         boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
