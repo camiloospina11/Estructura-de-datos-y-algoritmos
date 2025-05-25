@@ -6,7 +6,9 @@ from kivy.uix.label import Label
 from kivy.uix.floatlayout import FloatLayout
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Rectangle, Color
+from kivy.graphics import Rectangle, Color, Line
+from kivy.uix.spinner import Spinner
+from collections import deque
 
 # Tamaño de la ventana
 Window.size = (900, 600)
@@ -33,9 +35,6 @@ ICONOS_BIOMA = {
     "montaña": "images/Montaña.png",
     "desierto": "images/Desierto.png"
 }
-
-import random
-from kivy.uix.spinner import Spinner
 
 class MapaWidget(FloatLayout):
     def __init__(self, **kwargs):
@@ -67,20 +66,18 @@ class MapaWidget(FloatLayout):
         self.bg.size = self.size
 
     def ver_mapa(self, instance):
-        CONEXIONES = self.CONEXIONES
         self.clear_widgets()
         self.update_bg()
 
         with self.canvas:
             Color(0, 0, 0, 1)
-            for origen, destino in CONEXIONES:
+            for origen, destino in self.CONEXIONES:
                 x1, y1 = POSICIONES[origen]
                 x2, y2 = POSICIONES[destino]
                 x1_abs = x1 * Window.width
                 y1_abs = y1 * Window.height
                 x2_abs = x2 * Window.width
                 y2_abs = y2 * Window.height
-                from kivy.graphics import Line
                 Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=1.5)
 
         boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
@@ -103,27 +100,19 @@ class MapaWidget(FloatLayout):
         for lugar, (x, y) in POSICIONES.items():
             bioma = BIOMAS_FIJOS.get(lugar, "bosque")
             ruta_icono = ICONOS_BIOMA.get(bioma, "images/Arbol.png")
-
-            imagen = Image(source=ruta_icono, size_hint=(None, None), size=(64, 64), pos_hint={"x": x, "y": y})
-            self.add_widget(imagen)
-
-            etiqueta = Label(text=lugar, size_hint=(None, None), size=(120, 20), pos_hint={"x": x, "y": y - 0.05})
-            self.add_widget(etiqueta)
-
+            self.add_widget(Image(source=ruta_icono, size_hint=(None, None), size=(64, 64), pos_hint={"x": x, "y": y}))
+            self.add_widget(Label(text=lugar, size_hint=(None, None), size=(120, 20), pos_hint={"x": x, "y": y - 0.05}))
             if lugar == self.jugador_posicion:
-                icono_jugador = Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05})
-                self.add_widget(icono_jugador)
+                self.add_widget(Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05}))
 
-        adyacentes = [b for a, b in self.CONEXIONES if a == self.jugador_posicion] + [a for a, b in self.CONEXIONES if b == self.jugador_posicion]
-        self.spinner = Spinner(
-            text='Mover a...',
-            values=sorted(adyacentes),
+        self.spinner_destino = Spinner(
+            text='Destino',
+            values=sorted(POSICIONES.keys()),
             size_hint=(None, None),
             size=(150, 44),
             pos_hint={'x': 0.82, 'y': 0.05}
         )
-        self.spinner.bind(text=self.mover_jugador)
-        self.add_widget(self.spinner)
+        self.add_widget(self.spinner_destino)
 
         btn_ruta_min = Button(
             text="Ruta más corta",
@@ -134,17 +123,29 @@ class MapaWidget(FloatLayout):
         btn_ruta_min.bind(on_press=self.calcular_ruta_minima)
         self.add_widget(btn_ruta_min)
 
+        spinner_adyacente = Spinner(
+            text='Mover a...',
+            values=sorted(
+                [b for a, b in self.CONEXIONES if a == self.jugador_posicion] +
+                [a for a, b in self.CONEXIONES if b == self.jugador_posicion]
+            ),
+            size_hint=(None, None),
+            size=(150, 44),
+            pos_hint={'x': 0.82, 'y': 0.21}
+        )
+        spinner_adyacente.bind(text=self.mover_jugador)
+        self.add_widget(spinner_adyacente)
+
     def mover_jugador(self, spinner, destino):
         self.jugador_posicion = destino
         self.ver_mapa(None)
 
     def calcular_ruta_minima(self, instance):
-        from collections import deque
         inicio = self.jugador_posicion
-        destino = self.spinner.text if self.spinner.text != 'Mover a...' else None
+        destino = self.spinner_destino.text.strip()
 
-        if not destino:
-            print("Selecciona un destino válido.")
+        if inicio not in POSICIONES or destino not in POSICIONES or inicio == destino:
+            print("Selecciona un destino válido distinto a la posición actual del jugador.")
             return
 
         visitados = set()
@@ -155,6 +156,16 @@ class MapaWidget(FloatLayout):
             nodo = camino[-1]
             if nodo == destino:
                 print("Ruta más corta:", " → ".join(camino))
+                with self.canvas:
+                    Color(1, 0, 0, 1)
+                    for i in range(len(camino) - 1):
+                        x1, y1 = POSICIONES[camino[i]]
+                        x2, y2 = POSICIONES[camino[i+1]]
+                        x1_abs = x1 * Window.width
+                        y1_abs = y1 * Window.height
+                        x2_abs = x2 * Window.width
+                        y2_abs = y2 * Window.height
+                        Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=2.5)
                 return
             if nodo not in visitados:
                 visitados.add(nodo)
