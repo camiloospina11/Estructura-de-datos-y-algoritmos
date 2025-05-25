@@ -36,17 +36,41 @@ ICONOS_BIOMA = {
 
 import random
 
+from kivy.uix.spinner import Spinner
+
 class MapaWidget(FloatLayout):
     def __init__(self, **kwargs):
+        self.jugador_posicion = "Bosque Sombrío"
+        self.CONEXIONES = [
+            ("Bosque Sombrío", "Castillo del Eco"),
+            ("Castillo del Eco", "Montaña de Cristal"),
+            ("Montaña de Cristal", "Isla Perdida"),
+            ("Isla Perdida", "Aldea del Viento"),
+            ("Aldea del Viento", "Llanura Dorada"),
+            ("Llanura Dorada", "Río de la Luna"),
+            ("Río de la Luna", "Templo de Fuego"),
+            ("Templo de Fuego", "Cueva del Trueno"),
+            ("Cueva del Trueno", "Ruinas del Olvido"),
+            ("Ruinas del Olvido", "Bosque Sombrío")
+        ]
         super().__init__(**kwargs)
 
         with self.canvas.before:
             self.bg = Rectangle(source='images/mapa_papiro.png', pos=self.pos, size=Window.size)
             self.bind(pos=self.update_bg, size=self.update_bg)
 
-        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
+        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})  # Botón principal
         boton.bind(on_press=self.ver_mapa)
         self.add_widget(boton)
+
+
+
+
+
+        
+
+
+
 
     def update_bg(self, *args):
         self.bg.pos = self.pos
@@ -65,7 +89,19 @@ class MapaWidget(FloatLayout):
             ("Cueva del Trueno", "Ruinas del Olvido"),
             ("Ruinas del Olvido", "Bosque Sombrío")
         ]
-        jugador_posicion = "Bosque Sombrío"  # Nodo inicial del jugador
+        self.jugador_posicion = getattr(self, 'jugador_posicion', 'Bosque Sombrío')
+        self.CONEXIONES = [
+            ("Bosque Sombrío", "Castillo del Eco"),
+            ("Castillo del Eco", "Montaña de Cristal"),
+            ("Montaña de Cristal", "Isla Perdida"),
+            ("Isla Perdida", "Aldea del Viento"),
+            ("Aldea del Viento", "Llanura Dorada"),
+            ("Llanura Dorada", "Río de la Luna"),
+            ("Río de la Luna", "Templo de Fuego"),
+            ("Templo de Fuego", "Cueva del Trueno"),
+            ("Cueva del Trueno", "Ruinas del Olvido"),
+            ("Ruinas del Olvido", "Bosque Sombrío")
+        ]
         self.clear_widgets()
         self.update_bg()
 
@@ -81,7 +117,7 @@ class MapaWidget(FloatLayout):
                 from kivy.graphics import Line
                 Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=1.5)
 
-        # Volver a colocar el botón
+        # Volver a colocar el botón y agregar spinner solo dentro del mapa
         boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
         boton.bind(on_press=self.ver_mapa)
         self.add_widget(boton)
@@ -110,9 +146,26 @@ class MapaWidget(FloatLayout):
             self.add_widget(etiqueta)
 
             # Mostrar ícono del jugador si es la posición actual
-            if lugar == jugador_posicion:
+            if lugar == self.jugador_posicion:
                 icono_jugador = Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05})
                 self.add_widget(icono_jugador)
+
+        # Agregar spinner de movimiento al final
+        adyacentes = [b for a, b in self.CONEXIONES if a == self.jugador_posicion] + [a for a, b in self.CONEXIONES if b == self.jugador_posicion]
+        self.spinner = Spinner(
+            text='Mover a...',
+            values=sorted(adyacentes),
+            size_hint=(None, None),
+            size=(200, 44),
+            pos_hint={'center_x': 0.5, 'y': 0.83}
+        )
+        self.spinner.bind(text=self.mover_jugador)
+        self.add_widget(self.spinner)
+
+    def mover_jugador(self, spinner, destino):
+        self.jugador_posicion = destino
+        self.ver_mapa(None)
+
 
 class MundoApp(App):
     def build(self):
