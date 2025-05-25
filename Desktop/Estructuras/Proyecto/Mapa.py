@@ -35,7 +35,6 @@ ICONOS_BIOMA = {
 }
 
 import random
-
 from kivy.uix.spinner import Spinner
 
 class MapaWidget(FloatLayout):
@@ -59,49 +58,16 @@ class MapaWidget(FloatLayout):
             self.bg = Rectangle(source='images/mapa_papiro.png', pos=self.pos, size=Window.size)
             self.bind(pos=self.update_bg, size=self.update_bg)
 
-        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})  # Botón principal
+        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
         boton.bind(on_press=self.ver_mapa)
         self.add_widget(boton)
-
-
-
-
-
-        
-
-
-
 
     def update_bg(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
 
     def ver_mapa(self, instance):
-        CONEXIONES = [
-            ("Bosque Sombrío", "Castillo del Eco"),
-            ("Castillo del Eco", "Montaña de Cristal"),
-            ("Montaña de Cristal", "Isla Perdida"),
-            ("Isla Perdida", "Aldea del Viento"),
-            ("Aldea del Viento", "Llanura Dorada"),
-            ("Llanura Dorada", "Río de la Luna"),
-            ("Río de la Luna", "Templo de Fuego"),
-            ("Templo de Fuego", "Cueva del Trueno"),
-            ("Cueva del Trueno", "Ruinas del Olvido"),
-            ("Ruinas del Olvido", "Bosque Sombrío")
-        ]
-        self.jugador_posicion = getattr(self, 'jugador_posicion', 'Bosque Sombrío')
-        self.CONEXIONES = [
-            ("Bosque Sombrío", "Castillo del Eco"),
-            ("Castillo del Eco", "Montaña de Cristal"),
-            ("Montaña de Cristal", "Isla Perdida"),
-            ("Isla Perdida", "Aldea del Viento"),
-            ("Aldea del Viento", "Llanura Dorada"),
-            ("Llanura Dorada", "Río de la Luna"),
-            ("Río de la Luna", "Templo de Fuego"),
-            ("Templo de Fuego", "Cueva del Trueno"),
-            ("Cueva del Trueno", "Ruinas del Olvido"),
-            ("Ruinas del Olvido", "Bosque Sombrío")
-        ]
+        CONEXIONES = self.CONEXIONES
         self.clear_widgets()
         self.update_bg()
 
@@ -117,23 +83,22 @@ class MapaWidget(FloatLayout):
                 from kivy.graphics import Line
                 Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=1.5)
 
-        # Volver a colocar el botón y agregar spinner solo dentro del mapa
         boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
         boton.bind(on_press=self.ver_mapa)
         self.add_widget(boton)
 
         BIOMAS_FIJOS = {
-    "Bosque Sombrío": "bosque",
-    "Castillo del Eco": "desierto",
-    "Montaña de Cristal": "montaña",
-    "Cueva del Trueno": "fuego",
-    "Templo de Fuego": "fuego",
-    "Llanura Dorada": "hielo",
-    "Aldea del Viento": "bosque",
-    "Río de la Luna": "agua",
-    "Ruinas del Olvido": "montaña",
-    "Isla Perdida": "agua"
-}
+            "Bosque Sombrío": "bosque",
+            "Castillo del Eco": "desierto",
+            "Montaña de Cristal": "montaña",
+            "Cueva del Trueno": "fuego",
+            "Templo de Fuego": "fuego",
+            "Llanura Dorada": "hielo",
+            "Aldea del Viento": "bosque",
+            "Río de la Luna": "agua",
+            "Ruinas del Olvido": "montaña",
+            "Isla Perdida": "agua"
+        }
 
         for lugar, (x, y) in POSICIONES.items():
             bioma = BIOMAS_FIJOS.get(lugar, "bosque")
@@ -145,27 +110,60 @@ class MapaWidget(FloatLayout):
             etiqueta = Label(text=lugar, size_hint=(None, None), size=(120, 20), pos_hint={"x": x, "y": y - 0.05})
             self.add_widget(etiqueta)
 
-            # Mostrar ícono del jugador si es la posición actual
             if lugar == self.jugador_posicion:
                 icono_jugador = Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05})
                 self.add_widget(icono_jugador)
 
-        # Agregar spinner de movimiento al final
         adyacentes = [b for a, b in self.CONEXIONES if a == self.jugador_posicion] + [a for a, b in self.CONEXIONES if b == self.jugador_posicion]
         self.spinner = Spinner(
             text='Mover a...',
             values=sorted(adyacentes),
             size_hint=(None, None),
-            size=(200, 44),
-            pos_hint={'center_x': 0.5, 'y': 0.83}
+            size=(150, 44),
+            pos_hint={'x': 0.82, 'y': 0.05}
         )
         self.spinner.bind(text=self.mover_jugador)
         self.add_widget(self.spinner)
+
+        btn_ruta_min = Button(
+            text="Ruta más corta",
+            size_hint=(None, None),
+            size=(150, 44),
+            pos_hint={"x": 0.82, "y": 0.13}
+        )
+        btn_ruta_min.bind(on_press=self.calcular_ruta_minima)
+        self.add_widget(btn_ruta_min)
 
     def mover_jugador(self, spinner, destino):
         self.jugador_posicion = destino
         self.ver_mapa(None)
 
+    def calcular_ruta_minima(self, instance):
+        from collections import deque
+        inicio = self.jugador_posicion
+        destino = self.spinner.text if self.spinner.text != 'Mover a...' else None
+
+        if not destino:
+            print("Selecciona un destino válido.")
+            return
+
+        visitados = set()
+        cola = deque([[inicio]])
+
+        while cola:
+            camino = cola.popleft()
+            nodo = camino[-1]
+            if nodo == destino:
+                print("Ruta más corta:", " → ".join(camino))
+                return
+            if nodo not in visitados:
+                visitados.add(nodo)
+                vecinos = [b for a, b in self.CONEXIONES if a == nodo] + [a for a, b in self.CONEXIONES if b == nodo]
+                for vecino in vecinos:
+                    if vecino not in camino:
+                        cola.append(camino + [vecino])
+
+        print("No hay ruta disponible.")
 
 class MundoApp(App):
     def build(self):
