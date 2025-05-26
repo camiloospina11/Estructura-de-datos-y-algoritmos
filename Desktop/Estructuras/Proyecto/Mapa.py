@@ -96,7 +96,7 @@ class MapaWidget(FloatLayout):
             ("Ruinas del Olvido", "Bosque Sombrío")
         ]
 
-        self.hermano_sound = SoundLoader.load('sounds/encontrado.mp3')
+        self.hermano_sound = SoundLoader.load('sonido/encontrado.mp3')
         if self.hermano_sound:
             self.hermano_sound.volume = 1
 
@@ -149,9 +149,23 @@ class MapaWidget(FloatLayout):
             auto_dismiss=False
         )
 
+        def cerrar_popup(instancia):
+            popup.dismiss()
+            if self.bg_music:
+                self.bg_music.play()
+
+
+
         btn_cerrar.bind(on_press=popup.dismiss)
         layout.add_widget(btn_cerrar)
+
+        if self.bg_music:
+            self.bg_music.stop()
+
+
         popup.open()
+
+
 
     def mostrar_historia(self, dt):
         layout = FloatLayout()
@@ -409,6 +423,12 @@ class MapaWidget(FloatLayout):
                         siguiente = next(camino_iter)
                         self.jugador_posicion = siguiente
                         self.ver_mapa(None)
+                        if siguiente == HERMANO_POSICION:
+                            if self.hermano_sound:
+                                self.hermano_sound.play()
+                            self.mostrar_popup_hermano_encontrado()
+                            return  # Detiene el avance automático
+
                         Clock.schedule_once(mover_paso_a_paso, 0.7)
                     except StopIteration:
                         return
