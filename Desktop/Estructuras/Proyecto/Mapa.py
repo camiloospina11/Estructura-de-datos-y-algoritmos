@@ -10,6 +10,7 @@ from kivy.graphics import Rectangle, Color, Line, InstructionGroup
 from kivy.uix.spinner import Spinner
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
+from kivy.core.audio import SoundLoader
 from collections import deque
 
 Window.size = (900, 600)
@@ -43,6 +44,7 @@ class MapaWidget(FloatLayout):
         super().__init__(**kwargs)
         self.jugador_posicion = "Bosque Sombrío"
         self.destino_ruta = None
+        self.ruta_encontrada = []
         self.animaciones_anteriores = []
         self.lineas_ruta = []
         self.hermano_opacidad = 1
@@ -60,13 +62,64 @@ class MapaWidget(FloatLayout):
             ("Ruinas del Olvido", "Bosque Sombrío")
         ]
 
+        self.hermano_sound = SoundLoader.load('sounds/encontrado.mp3')
+        if self.hermano_sound:
+            self.hermano_sound.volume = 1
+
+        self.bg_music = SoundLoader.load('sounds/inicio.mp3')
+        if self.bg_music:
+            self.bg_music.loop = True
+            self.bg_music.play()
+
         with self.canvas.before:
             self.bg = Rectangle(source='images/mapa_papiro.png', pos=self.pos, size=Window.size)
             self.bind(pos=self.update_bg, size=self.update_bg)
 
-        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
-        boton.bind(on_press=self.ver_mapa)
-        self.add_widget(boton)
+        Clock.schedule_once(self.mostrar_historia, 0.5)
+
+    def mostrar_historia(self, dt):
+        layout = FloatLayout()
+
+        with layout.canvas.before:
+            Color(1, 1, 1, 1)
+            self.historia_bg = Rectangle(source='images/mapa_papiro.png', pos=layout.pos, size=(700, 400))
+            layout.bind(pos=lambda *args: setattr(self.historia_bg, 'pos', layout.pos))
+            layout.bind(size=lambda *args: setattr(self.historia_bg, 'size', layout.size))
+
+        texto = """Hace años, en la vasta región de Eldoria, vivían dos hermanos inseparables. Una noche,
+una tormenta mágica separó sus destinos. Tú, el hermano mayor, despiertas solo
+en el Bosque Sombrío. Tu misión: recorrer el reino y encontrar a tu hermano perdido,
+a quien se vio por última vez en el Templo de Fuego."""
+
+        label = Label(
+            text=texto,
+            size_hint=(0.9, 0.7),
+            pos_hint={"center_x": 0.5, "center_y": 0.55},
+            halign='center',
+            valign='middle',
+            color=(0, 0, 0, 1),
+            font_size=18
+        )
+        label.bind(size=label.setter('text_size'))
+        layout.add_widget(label)
+
+        btn_iniciar = Button(
+            text="Iniciar Aventura",
+            size_hint=(None, None),
+            size=(160, 50),
+            pos_hint={"center_x": 0.5, "y": 0.05}
+        )
+        layout.add_widget(btn_iniciar)
+
+        popup = Popup(
+            title="El Comienzo",
+            content=layout,
+            size_hint=(None, None),
+            size=(700, 400),
+            auto_dismiss=False
+        )
+        btn_iniciar.bind(on_press=lambda *args: (popup.dismiss(), self.ver_mapa(None)))
+        popup.open()
 
     def update_bg(self, *args):
         self.bg.pos = self.pos
@@ -76,24 +129,28 @@ class MapaWidget(FloatLayout):
         self.clear_widgets()
         self.update_bg()
 
-        for animacion in self.animaciones_anteriores:
+        for animacion in getattr(self, 'animaciones_anteriores', []):
             self.canvas.remove(animacion)
         self.animaciones_anteriores.clear()
 
-        for linea in self.lineas_ruta:
+        for linea in getattr(self, 'lineas_ruta', []):
             self.canvas.remove(linea)
         self.lineas_ruta.clear()
+
+        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
+        boton.bind(on_press=self.ver_mapa)
+        self.add_widget(boton)
 
         with self.canvas:
             Color(0, 0, 0, 1)
             for origen, destino in self.CONEXIONES:
                 x1, y1 = POSICIONES[origen]
                 x2, y2 = POSICIONES[destino]
-                Line(points=[x1 * Window.width + 32, y1 * Window.height + 32, x2 * Window.width + 32, y2 * Window.height + 32], width=1.5)
-
-        boton = Button(text="Ver Mapa", size_hint=(None, None), size=(150, 50), pos_hint={"center_x": 0.5, "y": 0.9})
-        boton.bind(on_press=self.ver_mapa)
-        self.add_widget(boton)
+                x1_abs = x1 * Window.width
+                y1_abs = y1 * Window.height
+                x2_abs = x2 * Window.width
+                y2_abs = y2 * Window.height
+                Line(points=[x1_abs + 32, y1_abs + 32, x2_abs + 32, y2_abs + 32], width=1.5)
 
         BIOMAS_FIJOS = {
             "Bosque Sombrío": "bosque",
@@ -115,7 +172,6 @@ class MapaWidget(FloatLayout):
             self.add_widget(Label(text=lugar, size_hint=(None, None), size=(120, 20), pos_hint={"x": x, "y": y - 0.05}))
             if lugar == self.jugador_posicion:
                 self.add_widget(Image(source="images/Jugador.png", size_hint=(None, None), size=(32, 32), pos_hint={"x": x + 0.02, "y": y + 0.05}))
-            if lugar == self.destino_ruta:
                 with self.canvas:
                     Color(1, 1, 0, 1)
                     circulo = Line(circle=(x * Window.width + 32, y * Window.height + 32, 40), width=2)
@@ -127,25 +183,7 @@ class MapaWidget(FloatLayout):
                     self.hermano_parpadeo_event.cancel()
                 self.hermano_parpadeo_event = Clock.schedule_interval(self.animar_hermano, 0.6)
 
-        self.spinner_destino = Spinner(
-            text='Destino',
-            values=sorted([lugar for lugar in POSICIONES.keys() if lugar != self.jugador_posicion]),
-            size_hint=(None, None),
-            size=(150, 44),
-            pos_hint={'x': 0.82, 'y': 0.05}
-        )
-        self.add_widget(self.spinner_destino)
-
-        btn_ruta_min = Button(
-            text="Ruta más corta",
-            size_hint=(None, None),
-            size=(150, 44),
-            pos_hint={"x": 0.82, "y": 0.13}
-        )
-        btn_ruta_min.bind(on_press=self.calcular_ruta_minima)
-        self.add_widget(btn_ruta_min)
-
-        spinner_adyacente = Spinner(
+        spinner = Spinner(
             text='Mover a...',
             values=sorted(
                 [b for a, b in self.CONEXIONES if a == self.jugador_posicion] +
@@ -153,10 +191,28 @@ class MapaWidget(FloatLayout):
             ),
             size_hint=(None, None),
             size=(150, 44),
-            pos_hint={'x': 0.82, 'y': 0.21}
+            pos_hint={'x': 0.82, 'y': 0.05}
         )
-        spinner_adyacente.bind(text=self.mover_jugador)
-        self.add_widget(spinner_adyacente)
+        spinner.bind(text=self.mover_jugador)
+        self.add_widget(spinner)
+
+        self.spinner_destino = Spinner(
+            text='Destino',
+            values=sorted([lugar for lugar in POSICIONES.keys() if lugar != self.jugador_posicion]),
+            size_hint=(None, None),
+            size=(150, 44),
+            pos_hint={'x': 0.82, 'y': 0.13}
+        )
+        self.add_widget(self.spinner_destino)
+
+        btn_ruta_min = Button(
+            text="Ruta más corta",
+            size_hint=(None, None),
+            size=(150, 44),
+            pos_hint={"x": 0.82, "y": 0.21}
+        )
+        btn_ruta_min.bind(on_press=self.calcular_ruta_minima)
+        self.add_widget(btn_ruta_min)
 
     def animar_hermano(self, dt):
         if self.hermano_img:
@@ -166,9 +222,11 @@ class MapaWidget(FloatLayout):
     def mover_jugador(self, spinner, destino):
         self.jugador_posicion = destino
         if destino == HERMANO_POSICION:
-            self.mostrar_popup("\u00a1Hermano encontrado!", "\u00a1Has encontrado a tu hermano perdido en el Templo de Fuego!", botones=True)
+            if self.hermano_sound:
+                self.hermano_sound.play()
+            self.mostrar_popup("\u00a1Hermano encontrado!", "\u00a1Has encontrado a tu hermano perdido en el Templo de Fuego!", cerrar=True)
         else:
-            self.mostrar_popup("Sin pistas", f"Tu hermano no está aquí. Tal vez deberías seguir buscando...", botones=True)
+            self.mostrar_popup("Sin pistas", f"Tu hermano no está aquí. Tal vez deberías seguir buscando...", cerrar=True)
         self.ver_mapa(None)
 
     def calcular_ruta_minima(self, instance):
@@ -220,7 +278,7 @@ class MapaWidget(FloatLayout):
         ruta_str = " ➜ ".join(camino)
         self.mostrar_popup("Ruta más corta", f"Ruta más corta:\n{ruta_str}", botones=True)
 
-    def mostrar_popup(self, titulo, mensaje, botones=False):
+    def mostrar_popup(self, titulo, mensaje, botones=False, cerrar=False):
         layout = FloatLayout()
 
         with layout.canvas.before:
@@ -246,10 +304,10 @@ class MapaWidget(FloatLayout):
             content=layout,
             size_hint=(None, None),
             size=(600, 300),
-            auto_dismiss=True
+            auto_dismiss=False
         )
 
-        if botones:
+        if botones or cerrar:
             btn_aceptar = Button(
                 text="Aceptar",
                 size_hint=(None, None),
@@ -259,31 +317,31 @@ class MapaWidget(FloatLayout):
             btn_aceptar.bind(on_press=popup.dismiss)
             layout.add_widget(btn_aceptar)
 
-            if hasattr(self, 'ruta_encontrada') and self.ruta_encontrada:
-                btn_seguir = Button(
-                    text="Seguir ruta",
-                    size_hint=(None, None),
-                    size=(120, 40),
-                    pos_hint={"x": 0.55, "y": 0.05}
-                )
+        if botones and hasattr(self, 'ruta_encontrada') and self.ruta_encontrada:
+            btn_seguir = Button(
+                text="Seguir ruta",
+                size_hint=(None, None),
+                size=(120, 40),
+                pos_hint={"x": 0.55, "y": 0.05}
+            )
 
-                def seguir_ruta(inst):
-                    popup.dismiss()
-                    camino_iter = iter(self.ruta_encontrada[1:])
+            def seguir_ruta(inst):
+                popup.dismiss()
+                camino_iter = iter(self.ruta_encontrada[1:])
 
-                    def mover_paso_a_paso(dt):
-                        try:
-                            siguiente = next(camino_iter)
-                            self.jugador_posicion = siguiente
-                            self.ver_mapa(None)
-                            Clock.schedule_once(mover_paso_a_paso, 0.7)
-                        except StopIteration:
-                            return
+                def mover_paso_a_paso(dt):
+                    try:
+                        siguiente = next(camino_iter)
+                        self.jugador_posicion = siguiente
+                        self.ver_mapa(None)
+                        Clock.schedule_once(mover_paso_a_paso, 0.7)
+                    except StopIteration:
+                        return
 
-                    Clock.schedule_once(mover_paso_a_paso, 0.7)
+                Clock.schedule_once(mover_paso_a_paso, 0.7)
 
-                btn_seguir.bind(on_press=seguir_ruta)
-                layout.add_widget(btn_seguir)
+            btn_seguir.bind(on_press=seguir_ruta)
+            layout.add_widget(btn_seguir)
 
         popup.open()
 
