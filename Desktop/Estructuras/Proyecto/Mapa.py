@@ -118,9 +118,9 @@ class MapaWidget(FloatLayout):
             layout.bind(size=lambda *args: setattr(self.historia_bg, 'size', layout.size))
 
         texto = """Hace años, en la vasta región de Eldoria, vivían dos hermanos inseparables. Una noche,
-una tormenta mágica separó sus destinos. Tú, el hermano mayor, despiertas solo
-en el Bosque Sombrío. Tu misión: recorrer el reino y encontrar a tu hermano perdido,
-a quien se vio por última vez en el Templo de Fuego."""
+                una tormenta mágica separó sus destinos. Tú, el hermano mayor, despiertas solo
+                en el Bosque Sombrío. Tu misión: recorrer el reino y encontrar a tu hermano perdido,
+                a quien se vio por última vez en el Templo de Fuego."""
 
         label = Label(
             text=texto,
@@ -129,7 +129,8 @@ a quien se vio por última vez en el Templo de Fuego."""
             halign='center',
             valign='middle',
             color=(0, 0, 0, 1),
-            font_size=18
+            font_size=22,
+            font_name="fonts/MedievalSharp.ttf"
         )
         label.bind(size=label.setter('text_size'))
         layout.add_widget(label)
@@ -145,8 +146,7 @@ a quien se vio por última vez en el Templo de Fuego."""
         popup = Popup(
             title="El Comienzo",
             content=layout,
-            size_hint=(None, None),
-            size=(700, 400),
+            size_hint=(1, 1),
             auto_dismiss=False
         )
         btn_iniciar.bind(on_press=lambda *args: (popup.dismiss(), self.ver_mapa(None)))
