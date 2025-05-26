@@ -49,6 +49,38 @@ class MapaWidget(FloatLayout):
         self.lineas_ruta = []
         self.hermano_opacidad = 1
         self.hermano_parpadeo_event = None
+        Clock.schedule_once(self.mostrar_pantalla_inicio, 0.5)
+
+
+    def mostrar_pantalla_inicio(self,dt):
+        layout = FloatLayout()
+
+        with layout.canvas.before:
+            Color(1, 1, 1, 1)
+            bg = Rectangle(source='images/titulo_inicio.png', pos=layout.pos, size=Window.size)
+            layout.bind(pos=lambda *a: setattr(bg, 'pos', layout.pos))
+            layout.bind(size=lambda *a: setattr(bg, 'size', layout.size))
+
+        boton = Button(
+            text="Continuar",
+            size_hint=(None, None),
+            size=(160, 50),
+            pos_hint={"center_x": 0.5, "y": 0.1}
+        )
+
+        layout.add_widget(boton)
+
+        popup = Popup(
+            title="",
+            content=layout,
+            size_hint=(1, 1),
+            auto_dismiss=False
+        )
+
+        boton.bind(on_press=lambda *a: (popup.dismiss(), self.mostrar_historia(0)))
+        popup.open()
+
+
         self.CONEXIONES = [
             ("Bosque Sombrío", "Castillo del Eco"),
             ("Castillo del Eco", "Montaña de Cristal"),
@@ -66,7 +98,7 @@ class MapaWidget(FloatLayout):
         if self.hermano_sound:
             self.hermano_sound.volume = 1
 
-        self.bg_music = SoundLoader.load('sounds/inicio.mp3')
+        self.bg_music = SoundLoader.load('sonido/sound.wav')
         if self.bg_music:
             self.bg_music.loop = True
             self.bg_music.play()
@@ -75,7 +107,6 @@ class MapaWidget(FloatLayout):
             self.bg = Rectangle(source='images/mapa_papiro.png', pos=self.pos, size=Window.size)
             self.bind(pos=self.update_bg, size=self.update_bg)
 
-        Clock.schedule_once(self.mostrar_historia, 0.5)
 
     def mostrar_historia(self, dt):
         layout = FloatLayout()
