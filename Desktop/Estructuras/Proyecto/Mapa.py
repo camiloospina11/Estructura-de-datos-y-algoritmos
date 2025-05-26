@@ -51,8 +51,11 @@ class MapaWidget(FloatLayout):
         self.hermano_parpadeo_event = None
         Clock.schedule_once(self.mostrar_pantalla_inicio, 0.5)
 
+    def update_bg(self, *args):
+        self.bg.pos = self.pos
+        self.bg.size = self.size
 
-    def mostrar_pantalla_inicio(self,dt):
+    def mostrar_pantalla_inicio(self, dt):
         layout = FloatLayout()
 
         with layout.canvas.before:
@@ -80,7 +83,6 @@ class MapaWidget(FloatLayout):
         boton.bind(on_press=lambda *a: (popup.dismiss(), self.mostrar_historia(0)))
         popup.open()
 
-
         self.CONEXIONES = [
             ("Bosque Sombrío", "Castillo del Eco"),
             ("Castillo del Eco", "Montaña de Cristal"),
@@ -107,6 +109,49 @@ class MapaWidget(FloatLayout):
             self.bg = Rectangle(source='images/mapa_papiro.png', pos=self.pos, size=Window.size)
             self.bind(pos=self.update_bg, size=self.update_bg)
 
+    def mostrar_popup_hermano_encontrado(self):
+        layout = FloatLayout()
+
+        with layout.canvas.before:
+            Color(1, 1, 1, 1)
+            bg = Rectangle(source='images/mapa_papiro.png', pos=layout.pos, size=(600, 400))
+            layout.bind(pos=lambda *a: setattr(bg, 'pos', layout.pos))
+            layout.bind(size=lambda *a: setattr(bg, 'size', layout.size))
+
+        hermano_img = Image(source="images/Hermano.png", size_hint=(None, None), size=(100, 100), pos_hint={"center_x": 0.5, "center_y": 0.65})
+        layout.add_widget(hermano_img)
+
+        label = Label(
+            text="¡Has encontrado a tu hermano perdido en el Templo de Fuego!",
+            size_hint=(0.9, 0.3),
+            pos_hint={"center_x": 0.5, "center_y": 0.4},
+            halign='center',
+            valign='middle',
+            color=(0, 0, 0, 1),
+            font_size=16,
+            font_name="fonts/MedievalSharp.ttf"
+        )
+        label.bind(size=label.setter('text_size'))
+        layout.add_widget(label)
+
+        btn_cerrar = Button(
+            text="Aceptar",
+            size_hint=(None, None),
+            size=(100, 40),
+            pos_hint={"center_x": 0.5, "y": 0.05}
+        )
+
+        popup = Popup(
+            title="¡Hermano encontrado!",
+            content=layout,
+            size_hint=(None, None),
+            size=(600, 400),
+            auto_dismiss=False
+        )
+
+        btn_cerrar.bind(on_press=popup.dismiss)
+        layout.add_widget(btn_cerrar)
+        popup.open()
 
     def mostrar_historia(self, dt):
         layout = FloatLayout()
@@ -152,9 +197,7 @@ class MapaWidget(FloatLayout):
         btn_iniciar.bind(on_press=lambda *args: (popup.dismiss(), self.ver_mapa(None)))
         popup.open()
 
-    def update_bg(self, *args):
-        self.bg.pos = self.pos
-        self.bg.size = self.size
+    # Las funciones faltantes como ver_mapa, mover_jugador, calcular_ruta_minima, mostrar_popup se integrarán aquí.
 
     def ver_mapa(self, instance):
         self.clear_widgets()
@@ -255,7 +298,8 @@ class MapaWidget(FloatLayout):
         if destino == HERMANO_POSICION:
             if self.hermano_sound:
                 self.hermano_sound.play()
-            self.mostrar_popup("\u00a1Hermano encontrado!", "\u00a1Has encontrado a tu hermano perdido en el Templo de Fuego!", cerrar=True)
+            self.mostrar_popup_hermano_encontrado()
+
         else:
             self.mostrar_popup("Sin pistas", f"Tu hermano no está aquí. Tal vez deberías seguir buscando...", cerrar=True)
         self.ver_mapa(None)
